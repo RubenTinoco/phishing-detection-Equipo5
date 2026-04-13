@@ -1,0 +1,4 @@
+[core]
+    remote = mi_almacenamiento_local
+['remote "mi_almacenamiento_local"']
+    url = C:\Backups_DVC
