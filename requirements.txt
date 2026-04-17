@@ -1,0 +1,10 @@
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+ipywidgets
+jupyterlab
+notebook
+ipykernel
+dvc
