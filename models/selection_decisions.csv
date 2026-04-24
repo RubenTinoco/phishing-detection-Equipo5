@@ -1,0 +1,8 @@
+Modelo,F1,AUC-ROC,Seleccionado,Justificación
+SVM,0.9422,0.9843,✅ Sí,"F1=0.9422, AUC=0.9843. Seleccionado para tuning en Sprint 4."
+Random Forest,0.9419,0.9861,✅ Sí,"F1=0.9419, AUC=0.9861. Seleccionado para tuning en Sprint 4."
+Gradient Boosting,0.9417,0.9881,✅ Sí,"F1=0.9417, AUC=0.9881. Seleccionado para tuning en Sprint 4."
+Logistic Regression,0.935,0.9839,❌ No,Descartado: superado por los top 3 en F1 y AUC-ROC. No justifica el costo de tuning.
+KNN,0.9298,0.9777,❌ No,Descartado: superado por los top 3 en F1 y AUC-ROC. No justifica el costo de tuning.
+Decision Tree,0.9153,0.9194,❌ No,Descartado: superado por los top 3 en F1 y AUC-ROC. No justifica el costo de tuning.
+Naive Bayes,0.574,0.9556,❌ No,Descartado: F1=0.5740 insuficiente. Rendimiento bajo baseline esperado.
