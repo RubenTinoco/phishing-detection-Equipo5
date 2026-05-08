@@ -1,0 +1,3 @@
+,F1,AUC-ROC,Recall,Precision
+Baseline RF (Sprint 3),0.9392,0.9854,0.9417,0.9367
+Modelo Final (Sprint 4),0.9479,0.9918,0.9488,0.9471

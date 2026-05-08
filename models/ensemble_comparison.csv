@@ -1,0 +1,8 @@
+Modelo,F1,F1_std,AUC-ROC,Recall,Precision
+LightGBM,0.9506,0.0054,,0.9553,0.946
+XGBoost,0.9506,0.0062,,0.9565,0.9449
+Voting Soft (RF+GB+LR),0.9477,0.0051,,0.9557,0.9399
+Voting Hard (RF+GB+LR),0.9477,0.0034,,0.9557,0.9399
+Stacking (RF+GB → LR),0.9475,0.0052,,0.9524,0.9428
+Bagging (DT base),0.9452,0.0076,,0.9536,0.937
+▶ RF Tuned (referencia),0.9442,0.0063,0.9879,0.9532,0.9355
