@@ -1,0 +1,76 @@
+---
+title: "Sprint 5: Evaluacion, Business Value y Handoff"
+author: "Equipo 5 - Phishing Detection"
+format:
+  pdf:
+    toc: true
+    number-sections: true
+---
+
+## Resumen ejecutivo
+
+El modelo final del Sprint 4 esta listo para pasar a evaluacion de negocio. En el test set obtuvo F1 = 0.9479, AUC-ROC = 0.9918, Recall = 0.9488 y Precision = 0.9471. Estos resultados cumplen los criterios de exito definidos en el Sprint 1 y superan al baseline Random Forest del Sprint 3.
+
+La recomendacion es avanzar hacia un MVP en el Sprint 6, siempre que el sponsor valide la matriz costo-beneficio y el umbral operativo. El Sprint 5 no entrena modelos nuevos: convierte el modelo final en una decision de negocio mediante analisis economico, dashboard y paquete de handoff.
+
+## Contexto del negocio
+
+El objetivo del proyecto es detectar URLs fraudulentas antes de que el usuario interactue con ellas. En este dominio, un falso negativo representa un phishing no bloqueado y puede generar perdida economica, incidentes de seguridad y dano reputacional. Un falso positivo bloquea temporalmente un sitio legitimo y genera friccion operativa.
+
+## Datos y modelo final
+
+- Dataset de test: 1,170 URLs.
+- Distribucion test: 604 phishing y 566 legitimas.
+- Modelo final persistido: `models/final_model.pkl`.
+- Comparacion principal: baseline Random Forest del Sprint 3 vs. modelo final del Sprint 4.
+
+## Resultados tecnicos
+
+| Metrica | Baseline RF | Modelo final |
+|---|---:|---:|
+| F1 | 0.9392 | 0.9479 |
+| AUC-ROC | 0.9854 | 0.9918 |
+| Recall | 0.9417 | 0.9488 |
+| Precision | 0.9367 | 0.9471 |
+
+Matriz de confusion del modelo final con umbral de referencia. Para valor de negocio se interpreta phishing como clase positiva:
+
+|  | Pred. legitimo | Pred. phishing |
+|---|---:|---:|
+| Real legitimo | 537 | 29 |
+| Real phishing | 30 | 574 |
+
+## Valor de negocio
+
+La matriz costo-beneficio inicial usa estos supuestos:
+
+- TP: USD 100 por phishing detectado.
+- FP: USD -20 por sitio legitimo bloqueado.
+- FN: USD -80 por phishing no detectado.
+- TN: USD 0.
+
+El notebook `notebooks/15_business_value.ipynb` calcula el valor esperado para distintos umbrales y recomienda el umbral que maximiza el resultado economico. El dashboard permite modificar estos supuestos en vivo.
+
+## Riesgos y limitaciones
+
+- Los costos unitarios son supuestos hasta ser aprobados por el sponsor.
+- El modelo puede degradarse si cambian las tecnicas de phishing.
+- Variables como SSL, trafico web o indicadores de contenido pueden sufrir drift.
+- El despliegue requiere contratos claros de entrada y salida.
+
+## Recomendaciones
+
+1. Desplegar un MVP controlado en Sprint 6.
+2. Validar matriz costo-beneficio con stakeholder antes de fijar el umbral final.
+3. Usar recall de phishing y tasa de falsos positivos como KPIs de seguimiento.
+4. Implementar monitoreo de drift desde el primer release.
+5. Mantener el paquete `handoff/` como contrato tecnico para deployment.
+
+## Anexos tecnicos
+
+- Notebook business value: `notebooks/15_business_value.ipynb`.
+- Notebook dashboard prototype: `notebooks/16_dashboard_prototype.ipynb`.
+- Notebook findings report: `notebooks/17_findings_report.ipynb`.
+- Dashboard: `dashboard/app.py`.
+- Recomendaciones: `reports/recommendations.md`.
+- Handoff Sprint 6: `handoff/`.
