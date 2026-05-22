@@ -145,27 +145,31 @@ st.write("")
 # SIDEBAR
 # =========================================================
 
-with st.sidebar:
+#with st.sidebar:
 
-    st.header("⚙️ Configuracion")
+#    st.header("⚙️ Configuracion")
 
-    threshold = st.slider(
-        "Umbral de deteccion",
-        min_value=0.05,
-        max_value=0.95,
-        value=0.50,
-        step=0.01
-    )
+#    threshold = st.slider(
+#        "Umbral de deteccion",
+#        min_value=0.05,
+ #       max_value=0.95,
+ #       value=0.50,
+ #       step=0.01
+ #   )
 
-    st.info(
-        """
-        Mientras mas alto el umbral:
-        
-        - menos falsos positivos
-        - mas estricta la deteccion
-        """
-    )
+#    st.info(
+#        """
+#        Mientras mas alto el umbral:
+#        
+#        - menos falsos positivos
+#        - mas estricta la deteccion
+#        """
+#)
+# =========================================================
+# CONFIGURACION FIJA
+# =========================================================
 
+threshold = 0.50
 
 # =========================================================
 # LAYOUT
