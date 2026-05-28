@@ -1,0 +1,15 @@
+run_id,model_name,run_type,sprint,status,metrics_logged,artifacts_logged,notes
+36afee3964f14e30a8cd24db9ab4efcf,Decision Tree,baseline,Sprint 3,success,"accuracy,precision,recall,f1,roc_auc",8,model_logged_with_mlflow_sklearn
+3558d12d7fc64727ae99ab86aceb4eaf,Gradient Boosting,baseline,Sprint 3,success,"accuracy,precision,recall,f1,roc_auc",8,model_logged_with_mlflow_sklearn
+6f91c825d35f484eb1e4c0ea6aaf9ffc,KNN,baseline,Sprint 3,success,"accuracy,precision,recall,f1,roc_auc",8,model_logged_with_mlflow_sklearn
+468a587171914665bec35e7127fdcaa7,Logistic Regression,baseline,Sprint 3,success,"accuracy,precision,recall,f1,roc_auc",8,model_logged_with_mlflow_sklearn
+a82d82a702cb4cc482372d815e621dcb,Naive Bayes,baseline,Sprint 3,success,"accuracy,precision,recall,f1,roc_auc",8,model_logged_with_mlflow_sklearn
+f71d6dfffada45ab9c2cc7367decb8d2,Random Forest,baseline,Sprint 3,success,"accuracy,precision,recall,f1,roc_auc",8,model_logged_with_mlflow_sklearn
+3a3b030be16f4ae7a472fb1603e8b5dc,SVM,baseline,Sprint 3,success,"accuracy,precision,recall,f1,roc_auc",8,model_logged_with_mlflow_sklearn
+88a30c75451c47179201cb90e249210d,Gradient Boosting,tuned,Sprint 4,success,"f1,time_seconds",8,model_logged_with_mlflow_sklearn
+e8d098b6529843f5b2e20972462b1bc1,LightGBM,ensemble,Sprint 4,success,"precision,recall,f1",8,model_logged_with_mlflow_sklearn
+9227787d85bb4383a019497e41f9e36b,Logistic Regression,tuned,Sprint 4,success,"f1,time_seconds",8,model_logged_with_mlflow_sklearn
+97b714df8d2c44d8816b071f33d0851b,Random Forest,tuned,Sprint 4,success,"f1,time_seconds",8,model_logged_with_mlflow_sklearn
+5b1fc1cae6804671ba47de6f5aa94942,Stacking,ensemble,Sprint 4,success,"precision,recall,f1",8,model_logged_with_mlflow_sklearn
+6d0926942c204dbdb2a4a34c693d2a70,XGBoost,ensemble,Sprint 4,success,"precision,recall,f1",8,model_logged_with_mlflow_sklearn
+6fc4c861f514441996d8675282f92574,Modelo Final,final,Sprint 4,success,"threshold,ahorro_neto,roi,valor_por_1000_urls,ahorro_incremental_vs_050",10,model_logged_with_mlflow_sklearn | missing_artifact:C:\Users\USUARIO\Desktop\phishing-detection-Equipo5\reports\figures\confusion_matrix_final.png | missing_artifact:C:\Users\USUARIO\Desktop\phishing-detection-Equipo5\reports\figures\roc_curve_final.png | missing_artifact:C:\Users\USUARIO\Desktop\phishing-detection-Equipo5\reports\figures\pr_curve_final.png

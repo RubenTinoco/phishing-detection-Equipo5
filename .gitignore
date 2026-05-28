@@ -8,17 +8,13 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
-
 # DVC (opcional, depende de tu setup)
 .dvc/cache/
 # Byte-compiled / optimized / DLL files
-__pycache__/
 *.py[codz]
 *$py.class
-
 # C extensions
 *.so
-
 # Distribution / packaging
 .Python
 build/
@@ -38,17 +34,14 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -58,6 +51,6 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
-.ipynb_checkpoints/
 .DS_Store
 Thumbs.db
+mlruns/

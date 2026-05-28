@@ -9,3 +9,4 @@ notebook
 ipykernel
 dvc
 streamlit
+mlflow
