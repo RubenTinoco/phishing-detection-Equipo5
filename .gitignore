@@ -1,6 +1,7 @@
 # Entorno virtual
 venv/
 phishing_s1/
+.env
 .env/
 # Python
 __pycache__/
