@@ -8,3 +8,4 @@ jupyterlab
 notebook
 ipykernel
 dvc
+streamlit
