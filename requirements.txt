@@ -8,3 +8,13 @@ jupyterlab
 notebook
 ipykernel
 dvc
+streamlit
+mlflow
+pymongo
+python-dotenv
+requests
+fastapi
+uvicorn
+pydantic
+lightgbm
+xgboost

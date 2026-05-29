@@ -1,0 +1,4 @@
+scenario,cost_false_negative,cost_false_positive,cost_review,cost_operational_per_url,minimum_recall,recommended_threshold,reference_threshold,recommended_recall,recommended_fp,recommended_fn,recommended_net_savings,reference_net_savings,incremental_savings_vs_050,recommended_roi,recommended_value_per_1000_urls,annual_net_savings
+conservador,250.0,25.0,2.0,0.5,0.98,0.09,0.5,0.995033,90,3,146033.0,140984.0,5049.0,74.241484,124814.53,12481452.99
+base,500.0,25.0,2.0,0.5,0.99,0.09,0.5,0.995033,90,3,296283.0,284484.0,11799.0,150.626843,253233.33,25323333.33
+severo,1000.0,25.0,2.0,0.5,0.995,0.09,0.5,0.995033,90,3,596783.0,571484.0,25299.0,303.39756,510070.94,51007094.02

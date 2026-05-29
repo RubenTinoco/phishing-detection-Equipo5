@@ -42,18 +42,41 @@ Matriz de confusion del modelo final con umbral de referencia. Para valor de neg
 
 ## Valor de negocio
 
-La matriz costo-beneficio inicial usa estos supuestos:
+El KPI economico principal de PB-16 es **ahorro neto esperado**, no solo valor anual estimado. El objetivo es medir cuanto costo se evita al usar el modelo frente a no usarlo. El KPI tecnico de soporte es **recall de phishing**, porque el falso negativo representa una URL maliciosa no detectada.
 
-- TP: USD 100 por phishing detectado.
-- FP: USD -20 por sitio legitimo bloqueado.
-- FN: USD -80 por phishing no detectado.
-- TN: USD 0.
+La matriz economica del escenario base usa estos supuestos:
 
-El notebook `notebooks/15_business_value.ipynb` calcula el valor esperado para distintos umbrales y recomienda el umbral que maximiza el resultado economico. El dashboard permite modificar estos supuestos en vivo.
+- FN: USD 500 por phishing no detectado.
+- FP: USD 25 por sitio legitimo marcado como phishing.
+- Revision de alertas: USD 2 por alerta.
+- Costo operativo: USD 0.50 por URL evaluada.
+- Volumen anual referencial: 100,000 URLs.
+- Recall minimo operativo: 0.99.
+
+Formula implementada:
+
+```text
+costo_sin_modelo = phishing_reales * costo_FN
+costo_operativo_total = alertas * costo_revision + total_urls * costo_operativo_por_url
+costo_con_modelo = FN*costo_FN + FP*costo_FP + alertas*costo_revision + total_urls*costo_operativo_por_url
+ahorro_neto = costo_sin_modelo - costo_con_modelo
+ROI = ahorro_neto / costo_operativo_total
+valor_por_1000_URLs = ahorro_neto / total_urls * 1000
+```
+
+Con el umbral de referencia 0.50, el modelo obtiene FN = 30, FP = 29, recall = 0.9503 y ahorro neto anual estimado de USD 24.31M. Con el umbral recomendado 0.09, obtiene FN = 3, FP = 90, recall = 0.9950 y ahorro neto anual estimado de USD 25.32M. La mejora incremental frente a 0.50 es de USD 1.01M anuales bajo el escenario base.
+
+El umbral 0.09 se recomienda porque maximiza el ahorro neto manteniendo el recall minimo. La aparente alternativa 0.12 queda descartada en el escenario base porque deja pasar 4 phishing frente a 3 en 0.09 y produce menor ahorro neto, aunque reduzca la cantidad de falsos positivos.
+
+Accuracy no es suficiente para esta decision porque pondera por igual aciertos y errores, pero en phishing los errores no tienen el mismo impacto. Un falso negativo puede traducirse en fraude, incidente de seguridad y dano reputacional; un falso positivo suele representar revision manual o friccion temporal.
+
+El notebook `notebooks/15_business_value.ipynb` genera `reports/business_value_thresholds.csv`, `reports/business_value_summary.csv`, `reports/business_value_scenarios.csv` y las figuras de umbrales y escenarios.
 
 ## Riesgos y limitaciones
 
 - Los costos unitarios son supuestos hasta ser aprobados por el sponsor.
+- El ROI depende de supuestos simplificados de costo operativo, costo de revision y volumen anual.
+- Los escenarios conservador, base y severo prueban sensibilidad, pero no reemplazan una validacion financiera real.
 - El modelo puede degradarse si cambian las tecnicas de phishing.
 - Variables como SSL, trafico web o indicadores de contenido pueden sufrir drift.
 - El despliegue requiere contratos claros de entrada y salida.
@@ -62,7 +85,7 @@ El notebook `notebooks/15_business_value.ipynb` calcula el valor esperado para d
 
 1. Desplegar un MVP controlado en Sprint 6.
 2. Validar matriz costo-beneficio con stakeholder antes de fijar el umbral final.
-3. Usar recall de phishing y tasa de falsos positivos como KPIs de seguimiento.
+3. Usar ahorro neto esperado y recall de phishing como KPIs principales de seguimiento.
 4. Implementar monitoreo de drift desde el primer release.
 5. Mantener el paquete `handoff/` como contrato tecnico para deployment.
 
