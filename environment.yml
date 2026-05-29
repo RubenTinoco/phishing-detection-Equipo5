@@ -18,3 +18,4 @@ dependencies:
   - mlflow
   - pymongo
   - python-dotenv
+  - requests

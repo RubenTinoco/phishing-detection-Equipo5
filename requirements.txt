@@ -12,3 +12,4 @@ streamlit
 mlflow
 pymongo
 python-dotenv
+requests

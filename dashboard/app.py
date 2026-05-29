@@ -1,9 +1,18 @@
+import os
 from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
+import requests
 import streamlit as st
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
 
 
 st.set_page_config(
@@ -16,12 +25,15 @@ ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATH = ROOT / "models" / "final_model.pkl"
 SUMMARY_PATH = ROOT / "reports" / "business_value_summary.csv"
 SCENARIOS_PATH = ROOT / "reports" / "business_value_scenarios.csv"
+MLFLOW_SUMMARY_PATH = ROOT / "reports" / "mlflow_tracking_summary.csv"
+MONGODB_EXPORT_PATH = ROOT / "reports" / "mongodb_export_summary.csv"
 
 TARGET_COL = "Result"
 PHISHING_LABEL = -1
 LEGITIMATE_LABEL = 1
 MODEL_PHISHING_LABELS = (-1, 0)
 
+DEFAULT_API_BASE_URL = "http://127.0.0.1:8000"
 DEFAULT_REFERENCE_THRESHOLD = 0.50
 DEFAULT_RECOMMENDED_THRESHOLD = 0.09
 DEFAULT_BUSINESS_ASSUMPTIONS = {
@@ -46,8 +58,7 @@ def load_business_summary():
     if not {"item", "value"}.issubset(summary.columns):
         return {}, "El resumen de Business Value no tiene columnas item/value. Se usaran valores por defecto."
 
-    values = dict(zip(summary["item"], summary["value"]))
-    return values, None
+    return dict(zip(summary["item"], summary["value"])), None
 
 
 @st.cache_data
@@ -60,6 +71,28 @@ def load_business_scenarios():
         return None, "El archivo de escenarios esta vacio."
 
     return scenarios, None
+
+
+@st.cache_data
+def load_mlflow_summary():
+    if not MLFLOW_SUMMARY_PATH.exists():
+        return None, f"No se encontro {MLFLOW_SUMMARY_PATH.relative_to(ROOT)}."
+
+    df = pd.read_csv(MLFLOW_SUMMARY_PATH)
+    if df.empty:
+        return df, "El resumen de MLflow existe, pero no contiene runs registrados."
+    return df, None
+
+
+@st.cache_data
+def load_mongodb_export_summary():
+    if not MONGODB_EXPORT_PATH.exists():
+        return None, f"No se encontro {MONGODB_EXPORT_PATH.relative_to(ROOT)}."
+
+    df = pd.read_csv(MONGODB_EXPORT_PATH)
+    if df.empty:
+        return df, "El resumen de exportacion MongoDB existe, pero no contiene registros."
+    return df, None
 
 
 def as_float(value, default):
@@ -94,6 +127,21 @@ def get_business_assumptions(scenarios):
     return assumptions
 
 
+@st.cache_data(ttl=20)
+def check_api_health(api_base_url):
+    if not api_base_url:
+        return "No configurada", "API_BASE_URL no configurada."
+
+    url = api_base_url.rstrip("/") + "/health"
+    try:
+        response = requests.get(url, timeout=3)
+        if response.ok:
+            return "Online", f"Health check OK ({response.status_code})."
+        return "Offline", f"Health check respondio {response.status_code}."
+    except requests.RequestException as exc:
+        return "Offline", str(exc)
+
+
 def phishing_probability(model, X):
     proba = model.predict_proba(X)
     classes = list(model.classes_)
@@ -105,11 +153,12 @@ def phishing_probability(model, X):
     return proba[:, classes.index(phishing_model_label)]
 
 
-def predict_pipeline(df, threshold):
+def predict_local(df, threshold):
     data = df.copy()
     if TARGET_COL in data.columns:
         data = data.drop(columns=[TARGET_COL])
 
+    model = load_model()
     probabilities = phishing_probability(model, data)
     result = df.copy()
     result["phishing_probability"] = probabilities
@@ -117,8 +166,61 @@ def predict_pipeline(df, threshold):
     return result
 
 
+def parse_api_response(payload, original_df, threshold):
+    if isinstance(payload, list):
+        result = pd.DataFrame(payload)
+    elif isinstance(payload, dict):
+        records = payload.get("results") or payload.get("data") or payload.get("predictions")
+        if isinstance(records, list):
+            result = pd.DataFrame(records)
+        else:
+            result = pd.DataFrame([payload])
+    else:
+        raise ValueError("Respuesta API no compatible.")
+
+    if len(result) != len(original_df):
+        raise ValueError("La API devolvio una cantidad de registros distinta al CSV enviado.")
+
+    output = original_df.copy()
+    for column in result.columns:
+        output[column] = result[column].values
+
+    if "phishing_probability" not in output.columns:
+        for candidate in ["probability", "probability_phishing", "phishing_score", "score"]:
+            if candidate in output.columns:
+                output["phishing_probability"] = pd.to_numeric(output[candidate], errors="coerce")
+                break
+
+    if "prediction" not in output.columns and "phishing_probability" in output.columns:
+        output["prediction"] = np.where(
+            output["phishing_probability"].astype(float) >= threshold,
+            "phishing",
+            "legitimo",
+        )
+
+    if "prediction" not in output.columns or "phishing_probability" not in output.columns:
+        raise ValueError("La respuesta API debe incluir prediction y phishing_probability, o una probabilidad equivalente.")
+
+    return output
+
+
+def predict_api(df, threshold, api_base_url):
+    data = df.copy()
+    if TARGET_COL in data.columns:
+        data = data.drop(columns=[TARGET_COL])
+
+    payload = {
+        "threshold": threshold,
+        "records": data.to_dict(orient="records"),
+    }
+    url = api_base_url.rstrip("/") + "/predict"
+    response = requests.post(url, json=payload, timeout=20)
+    response.raise_for_status()
+    return parse_api_response(response.json(), df, threshold)
+
+
 def confusion_or_expected_counts(result_df, threshold):
-    probabilities = result_df["phishing_probability"].to_numpy()
+    probabilities = pd.to_numeric(result_df["phishing_probability"], errors="coerce").fillna(0).to_numpy()
     predicted_phishing = probabilities >= threshold
 
     if TARGET_COL in result_df.columns:
@@ -198,29 +300,100 @@ def format_count(value):
     return f"{value:,.2f}"
 
 
-model = load_model()
+def render_mvp_status(mode, api_base_url, api_status, recommended_threshold):
+    st.subheader("Estado del MVP Sprint 6")
+    rows = [
+        ("Modo activo", mode),
+        ("API_BASE_URL", api_base_url or "No configurada"),
+        ("Estado API", api_status),
+        ("Modelo usado", "API REST / servicio remoto" if mode == "Modo API" else str(MODEL_PATH.relative_to(ROOT))),
+        ("Umbral recomendado", f"{recommended_threshold:.2f}"),
+        ("Fuente Business Value", str(SUMMARY_PATH.relative_to(ROOT)) if SUMMARY_PATH.exists() else "No disponible"),
+        ("Fuente MLflow", str(MLFLOW_SUMMARY_PATH.relative_to(ROOT)) if MLFLOW_SUMMARY_PATH.exists() else "No disponible"),
+        ("Fuente MongoDB", str(MONGODB_EXPORT_PATH.relative_to(ROOT)) if MONGODB_EXPORT_PATH.exists() else "No disponible"),
+    ]
+    st.dataframe(pd.DataFrame(rows, columns=["Elemento", "Estado"]), use_container_width=True)
+
+
+def render_mlflow_traceability():
+    st.subheader("Trazabilidad experimental")
+    mlflow_df, warning = load_mlflow_summary()
+    if warning:
+        st.warning(warning)
+    if mlflow_df is None or mlflow_df.empty:
+        return
+
+    status_counts = mlflow_df["status"].value_counts() if "status" in mlflow_df.columns else pd.Series(dtype=int)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Runs registrados", len(mlflow_df))
+    c2.metric("Success", int(status_counts.get("success", 0)))
+    c3.metric("Partial", int(status_counts.get("partial", 0)))
+    c4.metric("Failed", int(status_counts.get("failed", 0)))
+
+    columns = [
+        col for col in ["model_name", "run_type", "sprint", "status", "metrics_logged"]
+        if col in mlflow_df.columns
+    ]
+    table = mlflow_df[columns].copy()
+    if "model_name" in table.columns:
+        table.insert(0, "final_model", table["model_name"].astype(str).str.contains("final", case=False, na=False))
+    st.dataframe(table, use_container_width=True)
+
+
+def render_mongodb_status():
+    st.subheader("Persistencia MongoDB")
+    mongo_df, warning = load_mongodb_export_summary()
+    if warning:
+        st.warning(warning)
+    if mongo_df is None or mongo_df.empty:
+        return
+
+    if "status" in mongo_df.columns:
+        statuses = ", ".join(sorted(mongo_df["status"].dropna().astype(str).unique()))
+        st.metric("Estado de exportacion", statuses or "N/D")
+    if "notes" in mongo_df.columns and mongo_df["notes"].astype(str).str.contains("MONGODB_URI", na=False).any():
+        st.info("La exportacion figura como skipped porque falta configurar MONGODB_URI. El dashboard no se conecta a MongoDB todavia.")
+
+    st.dataframe(mongo_df, use_container_width=True)
+
+
 summary, summary_warning = load_business_summary()
 recommended_threshold, reference_threshold = get_thresholds(summary)
 scenarios, scenarios_warning = load_business_scenarios()
 assumptions = get_business_assumptions(scenarios)
+default_api_base_url = os.getenv("API_BASE_URL", DEFAULT_API_BASE_URL)
 
 
 st.title("Phishing Detection Platform")
-st.caption("Dashboard operativo alineado con Business Value PB-16")
+st.caption("Panel MVP Sprint 6: dashboard local con preparacion para API REST")
 
 if summary_warning:
     st.warning(summary_warning)
 
 st.info(
-    "En deteccion de phishing, el falso negativo es el error mas critico: "
-    "representa una URL maliciosa no detectada. El umbral recomendado se eligio "
-    "para maximizar ahorro neto manteniendo recall alto; accuracy no se usa como "
-    "metrica principal de negocio."
+    "Sprint 6 integra dashboard, API REST y despliegue. El modo local queda como respaldo "
+    "operativo; el modo API sera el camino de despliegue cuando exista el servicio. "
+    "Business Value y recall de phishing siguen siendo el centro de decision."
 )
 
 
 with st.sidebar:
     st.header("Configuracion")
+    execution_mode = st.radio(
+        "Modo de ejecucion",
+        ["Modo local", "Modo API"],
+        index=0,
+    )
+    api_base_url = st.text_input("API_BASE_URL", value=default_api_base_url)
+    api_status, api_message = check_api_health(api_base_url)
+
+    if api_status == "Online":
+        st.success(f"API {api_status}")
+    elif api_status == "Offline":
+        st.warning(f"API {api_status}: {api_message}")
+    else:
+        st.info(api_status)
+
     st.metric("Umbral recomendado", f"{recommended_threshold:.2f}")
     st.metric("Umbral referencia", f"{reference_threshold:.2f}")
     threshold = st.slider(
@@ -230,9 +403,12 @@ with st.sidebar:
         value=float(recommended_threshold),
         step=0.01,
     )
-    st.caption(
-        "Umbrales mas bajos priorizan recall de phishing; umbrales mas altos reducen falsas alarmas."
-    )
+    st.caption("Umbrales mas bajos priorizan recall de phishing; umbrales mas altos reducen falsas alarmas.")
+
+
+render_mvp_status(execution_mode, api_base_url, api_status, recommended_threshold)
+render_mlflow_traceability()
+render_mongodb_status()
 
 
 left, right = st.columns([1, 1])
@@ -256,7 +432,15 @@ if uploaded_file is not None:
         st.dataframe(df.head(), use_container_width=True)
 
         with st.spinner("Procesando predicciones..."):
-            result_df = predict_pipeline(df=df, threshold=threshold)
+            if execution_mode == "Modo API":
+                try:
+                    result_df = predict_api(df=df, threshold=threshold, api_base_url=api_base_url)
+                except (requests.RequestException, ValueError) as exc:
+                    st.error(f"No se pudo obtener prediccion desde la API: {exc}")
+                    st.warning("Use modo local mientras la API REST de Sprint 6 no este disponible o estable.")
+                    st.stop()
+            else:
+                result_df = predict_local(df=df, threshold=threshold)
 
         selected_metrics = business_metrics(result_df, threshold, assumptions)
         reference_metrics = business_metrics(result_df, reference_threshold, assumptions)
@@ -282,10 +466,7 @@ if uploaded_file is not None:
         e3.metric("Ahorro neto esperado", format_money(selected_metrics["net_savings"]))
         e4.metric("ROI", f"{selected_metrics['roi']:.2f}x")
         e5.metric("Valor por 1000 URLs", format_money(selected_metrics["value_per_1000_urls"]))
-        e6.metric(
-            "Ahorro vs 0.50",
-            format_money(selected_metrics["net_savings"] - reference_metrics["net_savings"]),
-        )
+        e6.metric("Ahorro vs 0.50", format_money(selected_metrics["net_savings"] - reference_metrics["net_savings"]))
 
         st.subheader("Comparacion de umbrales")
         comparison = pd.DataFrame([
@@ -309,14 +490,8 @@ if uploaded_file is not None:
         st.dataframe(comparison, use_container_width=True)
 
         d1, d2, d3 = st.columns(3)
-        d1.metric(
-            "Diferencia FN",
-            format_count(recommended_metrics["fn"] - reference_metrics["fn"]),
-        )
-        d2.metric(
-            "Diferencia FP",
-            format_count(recommended_metrics["fp"] - reference_metrics["fp"]),
-        )
+        d1.metric("Diferencia FN", format_count(recommended_metrics["fn"] - reference_metrics["fn"]))
+        d2.metric("Diferencia FP", format_count(recommended_metrics["fp"] - reference_metrics["fp"]))
         d3.metric(
             "Diferencia ahorro neto",
             format_money(recommended_metrics["net_savings"] - reference_metrics["net_savings"]),
