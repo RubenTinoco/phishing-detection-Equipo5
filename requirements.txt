@@ -13,3 +13,8 @@ mlflow
 pymongo
 python-dotenv
 requests
+fastapi
+uvicorn
+pydantic
+lightgbm
+xgboost
